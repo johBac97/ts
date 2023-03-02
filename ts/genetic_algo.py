@@ -1,7 +1,10 @@
 import numpy as np
 from typing import Optional
+import time
 from numpy.typing import ArrayLike as NDArray
+from pathlib import Path
 import traceback as tb
+from argparse import ArgumentParser
 
 import sys
 from loguru import logger
@@ -169,6 +172,8 @@ class TravelingSalesmanGeneticSolver:
 
     def run(self):
 
+        start_time = time.time()
+
         self._initialize()
 
         while self._generation < self._max_generations:
@@ -180,7 +185,7 @@ class TravelingSalesmanGeneticSolver:
             self._check_if_valid_chromosomes()
 
             logger.info(
-                f"Generation {self._generation}, max fitness: {self._scores[0]}"
+                f"Generation {self._generation}, shortest distance: {self._scores[0]}"
             )
 
             self._drop_least_fit()
@@ -197,17 +202,78 @@ class TravelingSalesmanGeneticSolver:
 
         self._calculate_fitness()
 
-        logger.info(f"Algorithm completed, best solution: {self._population[0,:]}")
+        end_time = time.time()
+
+        exec_time = round(end_time - start_time, 2)
+
+        logger.success(
+            f"Algorithm completed in {exec_time} second, best solution: {self._population[0,:]}"
+        )
+
+
+def parse_args():
+
+    parser = ArgumentParser("Traveling Salesman Genetic Solver")
+
+    parser.add_argument("graph", type=Path, help="Path to a numpy saved graph matrix.")
+
+    parser.add_argument("--pop-size", help="Population size", type=int, default=100)
+
+    parser.add_argument(
+        "--drop-frac",
+        help="Fraction of individuals to drop every generation.",
+        type=float,
+        default=0.1,
+    )
+
+    parser.add_argument(
+        "--mutation-frac",
+        help="Fraction of individuals that are mutated every generation.",
+        default=0.1,
+        type=float,
+    )
+
+    parser.add_argument(
+        "--seed", help="Set seed of the random number generator.", default=42, type=int
+    )
+
+    parser.add_argument(
+        "--generations",
+        help="Number of generations to run algorithm.",
+        default=100,
+        type=int,
+    )
+
+    return parser.parse_args()
+
+
+def load_graph(path: str):
+    graph = np.load(path)
+
+    assert np.all(np.diag(graph) == 0), "Diagonal not zero in loaded array."
+
+    if not np.allclose(graph, graph.T):
+        logger.warning("Loaded graph is not symmetric.")
+
+    return graph
 
 
 if __name__ == "__main__":
 
-    # Select graph
-    graph = graph_2
-    np.random.seed(2)
+    args = parse_args()
+
+    np.random.seed(args.seed)
+
+    graph = load_graph(args.graph)
+
     print(graph)
+
     solver = TravelingSalesmanGeneticSolver(
-        graph, drop_frac=0.1, pop_size=100, mutation_frac=0.4
+        graph,
+        drop_frac=args.drop_frac,
+        pop_size=args.pop_size,
+        mutation_frac=args.mutation_frac,
+        max_generations=args.generations,
     )
 
     solver.run()
