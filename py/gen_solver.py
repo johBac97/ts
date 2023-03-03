@@ -2,13 +2,13 @@ import numpy as np
 from typing import Optional
 import time
 from numpy.typing import ArrayLike as NDArray
+from datetime import datetime
 from pathlib import Path
 import traceback as tb
 from argparse import ArgumentParser
 
 import sys
 from loguru import logger
-
 
 
 ######## SOLVER #######
@@ -36,9 +36,8 @@ class TravelingSalesmanGeneticSolver:
         self._scores = None
         self._generation = 0
 
-        # Setup random number generator 
+        # Setup random number generator
         self._rng = np.random.default_rng(seed=seed)
-
 
     def _initialize(self):
 
@@ -57,7 +56,7 @@ class TravelingSalesmanGeneticSolver:
         ]
 
         self._scores = np.zeros(self._pop_size)
-        
+
         self._check_if_valid_chromosomes()
 
     def _calculate_fitness(self):
@@ -134,7 +133,7 @@ class TravelingSalesmanGeneticSolver:
 
         self._population[chromosome_inds, :] = mut_chromosomes
 
-    def OX1_crossover(self,parent_1: NDArray, parent_2: NDArray):
+    def OX1_crossover(self, parent_1: NDArray, parent_2: NDArray):
         """
         Davis' Order Crossover (OX1) Algorithm from https://www.tutorialspoint.com/genetic_algorithms/genetic_algorithms_crossover.htm
         """
@@ -168,11 +167,29 @@ class TravelingSalesmanGeneticSolver:
                 tb.print_stack()
                 sys.exit(1)
 
+    def _log_settings(self):
+
+        logger.info(f"Input graph:\n{graph}")
+
+        logger.info(f"Number of graph nodes:\t{self._num_nodes}")
+        logger.info(f"Population size:\t{self._pop_size}")
+        logger.info(f"Generations:\t{self._max_generations}")
+        logger.info(f"Drop fraction:\t{self._drop_frac}")
+        logger.info(f"Mutation fraction:\t{self._mutation_frac}")
+
     def run(self):
+
+        logger.info("Starting TravelingSalesmanGeneticSolver!")
+
+        self._log_settings()
 
         start_time = time.time()
 
+        logger.info("Initializing population...")
+
         self._initialize()
+
+        logger.info("Running algorithm!")
 
         while self._generation < self._max_generations:
             self._generation += 1
@@ -190,7 +207,6 @@ class TravelingSalesmanGeneticSolver:
 
             self._mutation()
 
-
         self._calculate_fitness()
 
         end_time = time.time()
@@ -198,10 +214,14 @@ class TravelingSalesmanGeneticSolver:
         exec_time = round(end_time - start_time, 2)
 
         logger.success(
-            f"Algorithm completed in {exec_time} second, best solution: {self._population[0,:]}"
+            f"Algorithm completed in {exec_time} seconds, shortest distance found:\t{self._scores[0]}"
         )
 
+        logger.info(f"Solution:\t{self._population[0,:]}")
+
+
 ########## UTILS ##########
+
 
 def parse_args():
 
@@ -236,6 +256,18 @@ def parse_args():
         type=int,
     )
 
+    current_time_str = datetime.now().strftime("%Y-%M-%d_%H-%m-%S")
+    parser.add_argument(
+        "--logfile",
+        help="Path to output log file",
+        default=Path(f"logs/{current_time_str}.log"),
+        type=Path,
+    )
+
+    parser.add_argument(
+        "--no-stdout", help="Disable printing of status to stdout.", action="store_true"
+    )
+
     return parser.parse_args()
 
 
@@ -254,6 +286,7 @@ def load_text_graph_format(path: Path):
         assert graph.shape[0] == graph.shape[1], "Non-square graph read from text file."
 
     return graph
+
 
 def load_graph(path: Path):
     """
@@ -280,7 +313,13 @@ if __name__ == "__main__":
 
     graph = load_graph(args.graph)
 
-    print(graph)
+    if args.no_stdout:
+        logger.remove(0)
+
+    if not args.logfile.parent.exists():
+        args.logfile.parent.mkdir()
+
+    logger.add(args.logfile)
 
     solver = TravelingSalesmanGeneticSolver(
         graph,
