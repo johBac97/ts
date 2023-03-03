@@ -9,40 +9,9 @@ from argparse import ArgumentParser
 import sys
 from loguru import logger
 
-graph_1 = np.array([[0, 1, 2], [1, 0, 3], [2, 3, 0]])  # 5
-graph_2 = np.array(
-    [
-        [0, 1, 2, 3, 4],
-        [1, 0, 3, 2, 3],
-        [2, 3, 0, 1, 3],
-        [3, 2, 1, 0, 3],
-        [4, 3, 3, 3, 0],
-    ]
-)  # 10
 
 
-def OX1_crossover(parent_1: NDArray, parent_2: NDArray):
-    """
-    Davis' Order Crossover (OX1) Algorithm from https://www.tutorialspoint.com/genetic_algorithms/genetic_algorithms_crossover.htm
-    """
-
-    assert parent_1.shape == parent_2.shape
-    length = parent_1.shape[0]
-
-    offspring = np.zeros_like(parent_1)
-    co_1, co_2 = np.sort(np.random.randint(length, size=2))
-
-    offspring[co_1:co_2] = parent_1[co_1:co_2]
-
-    ind = co_2
-    for p2 in np.roll(parent_2, length - co_2):
-        if p2 not in offspring:
-            offspring[ind] = p2
-            ind += 1
-            if ind == length:
-                ind = 0
-
-    return offspring
+######## SOLVER #######
 
 
 class TravelingSalesmanGeneticSolver:
@@ -53,6 +22,7 @@ class TravelingSalesmanGeneticSolver:
         drop_frac: float = 0.05,
         mutation_frac: float = 0.3,
         max_generations: int = 10,
+        seed: int = 0,
     ):
         self._graph = graph
         self._pop_size = pop_size
@@ -66,16 +36,19 @@ class TravelingSalesmanGeneticSolver:
         self._scores = None
         self._generation = 0
 
+        # Setup random number generator 
+        self._rng = np.random.default_rng(seed=seed)
+
+
     def _initialize(self):
 
         # initialize array containign the population
         self._population = np.resize(
             np.arange(1, self._num_nodes, dtype=np.int64),
             (self._pop_size, self._num_nodes - 1),
-        ).T
+        )
 
-        np.random.shuffle(self._population)
-        self._population = self._population.T
+        list(map(self._rng.shuffle, self._population))
 
         self._population = np.c_[
             np.zeros((self._pop_size, 1), dtype=np.int64),
@@ -84,10 +57,11 @@ class TravelingSalesmanGeneticSolver:
         ]
 
         self._scores = np.zeros(self._pop_size)
+        
+        self._check_if_valid_chromosomes()
 
     def _calculate_fitness(self):
 
-        # TODO - First implementation does this sequentially very inefficient
         for chromosome in range(self._pop_size):
             score = 0.0
             pos = self._population[chromosome, 0]
@@ -111,15 +85,14 @@ class TravelingSalesmanGeneticSolver:
         if n_offsprings <= 0:
             return
 
-        pairs = np.random.randint(
+        pairs = self._rng.integers(
             0, high=self._population.shape[0], size=(n_offsprings, 2)
         )
 
-        # TODO - optimize this shit
         offsprings = np.zeros((0, self._num_nodes - 1), dtype=np.int64)
         for off_ind in range(n_offsprings):
             if self._crossover_algo == "OX1":
-                offspring = OX1_crossover(
+                offspring = self.OX1_crossover(
                     self._population[pairs[off_ind, 0], 1:-1].copy(),
                     self._population[pairs[off_ind, 1], 1:-1].copy(),
                 )[np.newaxis, :]
@@ -151,8 +124,8 @@ class TravelingSalesmanGeneticSolver:
 
         n_mutations = int(np.floor(self._pop_size * self._mutation_frac))
 
-        chromosome_inds = np.random.randint(self._pop_size, size=n_mutations)
-        swap_inds = np.random.randint(1, self._num_nodes - 1, size=(n_mutations, 2))
+        chromosome_inds = self._rng.integers(self._pop_size, size=n_mutations)
+        swap_inds = self._rng.integers(1, self._num_nodes - 1, size=(n_mutations, 2))
 
         mut_chromosomes = self._population[chromosome_inds, :]
         mut_chromosomes[
@@ -161,9 +134,34 @@ class TravelingSalesmanGeneticSolver:
 
         self._population[chromosome_inds, :] = mut_chromosomes
 
-    def _check_if_valid_chromosomes(self):
+    def OX1_crossover(self,parent_1: NDArray, parent_2: NDArray):
+        """
+        Davis' Order Crossover (OX1) Algorithm from https://www.tutorialspoint.com/genetic_algorithms/genetic_algorithms_crossover.htm
+        """
 
-        # TODO very inefficient
+        assert parent_1.shape == parent_2.shape
+        length = parent_1.shape[0]
+
+        offspring = np.zeros_like(parent_1)
+        co_1, co_2 = np.sort(self._rng.integers(length, size=2))
+
+        offspring[co_1:co_2] = parent_1[co_1:co_2]
+
+        ind = co_2
+        for p2 in np.roll(parent_2, length - co_2):
+            if p2 not in offspring:
+                offspring[ind] = p2
+                ind += 1
+                if ind == length:
+                    ind = 0
+
+        return offspring
+
+    def _check_if_valid_chromosomes(self):
+        """
+        Debug function to check if all chromosomes are valid.
+        """
+
         for (c_i, c) in enumerate(self._population):
             if not np.unique(c).shape[0] == c.shape[0] - 1:
                 logger.warning(f"Chromosome number {c_i} is invalid: {c}")
@@ -182,23 +180,16 @@ class TravelingSalesmanGeneticSolver:
             # Calculate fitness of current population
             self._calculate_fitness()
 
-            self._check_if_valid_chromosomes()
-
             logger.info(
                 f"Generation {self._generation}, shortest distance: {self._scores[0]}"
             )
 
             self._drop_least_fit()
 
-            self._check_if_valid_chromosomes()
-
             self._crossover()
-
-            self._check_if_valid_chromosomes()
 
             self._mutation()
 
-            self._check_if_valid_chromosomes()
 
         self._calculate_fitness()
 
@@ -210,6 +201,7 @@ class TravelingSalesmanGeneticSolver:
             f"Algorithm completed in {exec_time} second, best solution: {self._population[0,:]}"
         )
 
+########## UTILS ##########
 
 def parse_args():
 
@@ -247,8 +239,32 @@ def parse_args():
     return parser.parse_args()
 
 
-def load_graph(path: str):
-    graph = np.load(path)
+def load_text_graph_format(path: Path):
+
+    with open(path, "r") as io:
+        # First line contains number of nodes
+        n_nodes = int(io.readline().strip())
+
+        graph = np.zeros((0, n_nodes), dtype=np.int64)
+
+        while values := io.readline().strip().split():
+            array = np.array(values, dtype=np.int64)
+            graph = np.r_[graph , array[np.newaxis,:]]
+
+        assert graph.shape[0] == graph.shape[1], "Non-square graph read from text file."
+
+    return graph
+
+def load_graph(path: Path):
+    """
+    Loads a graph defining the Traveling Salesmans Problem. Supports numpy array save format or custom text file format.
+    """
+
+    try:
+        graph = np.load(path)
+    except ValueError as error:
+        # Not a valid numpy save format. Try to load file as custom text file format.
+        graph = load_text_graph_format(path)
 
     assert np.all(np.diag(graph) == 0), "Diagonal not zero in loaded array."
 
@@ -262,8 +278,6 @@ if __name__ == "__main__":
 
     args = parse_args()
 
-    np.random.seed(args.seed)
-
     graph = load_graph(args.graph)
 
     print(graph)
@@ -274,6 +288,7 @@ if __name__ == "__main__":
         pop_size=args.pop_size,
         mutation_frac=args.mutation_frac,
         max_generations=args.generations,
+        seed=args.seed,
     )
 
     solver.run()
