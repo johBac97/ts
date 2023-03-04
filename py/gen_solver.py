@@ -219,6 +219,8 @@ class TravelingSalesmanGeneticSolver:
 
         logger.info(f"Solution:\t{self._population[0,:]}")
 
+        return {"solution": self._population[0, :].tolist(), "time": exec_time}
+
 
 ########## UTILS ##########
 
@@ -256,16 +258,23 @@ def parse_args():
         type=int,
     )
 
-    current_time_str = datetime.now().strftime("%Y-%M-%d_%H-%m-%S")
+    # current_time_str = datetime.now().strftime("%Y-%M-%d_%H-%m-%S")
     parser.add_argument(
         "--logfile",
         help="Path to output log file",
-        default=Path(f"logs/{current_time_str}.log"),
+        default=Path("logs/{time}.log"),
         type=Path,
     )
 
     parser.add_argument(
         "--no-stdout", help="Disable printing of status to stdout.", action="store_true"
+    )
+
+    parser.add_argument(
+        "--outfile",
+        type=Path,
+        default=None,
+        help="Store the solution in a text format.",
     )
 
     return parser.parse_args()
@@ -281,7 +290,7 @@ def load_text_graph_format(path: Path):
 
         while values := io.readline().strip().split():
             array = np.array(values, dtype=np.int64)
-            graph = np.r_[graph , array[np.newaxis,:]]
+            graph = np.r_[graph, array[np.newaxis, :]]
 
         assert graph.shape[0] == graph.shape[1], "Non-square graph read from text file."
 
@@ -321,6 +330,8 @@ if __name__ == "__main__":
 
     logger.add(args.logfile)
 
+    logger.info(f"Graph file loaded:\t{args.graph.resolve()}")
+
     solver = TravelingSalesmanGeneticSolver(
         graph,
         drop_frac=args.drop_frac,
@@ -330,4 +341,14 @@ if __name__ == "__main__":
         seed=args.seed,
     )
 
-    solver.run()
+    result = solver.run()
+
+    if args.outfile is not None:
+        if not args.outfile.parent.exists():
+            args.outfile.parent.mkdir(parents=True)
+
+        logger.info(f"Writing results to:\t{args.outfile.resolve()}")
+
+        with open(args.outfile, "w") as io:
+            io.write("solution: %s\n" % " ".join(map(str, result["solution"])))
+            io.write("time: %5.5f\n" % result["time"])
