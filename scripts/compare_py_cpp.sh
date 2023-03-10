@@ -34,11 +34,11 @@ echo -e "Running each algorithm $n_execs times."
 
 #echo -e "Writing temporary results to:\t$temp_dir"
 
-print_exec_time () {
-    # Read file until it encounters "Duration:" then print what comes after
+cut_info_from_file () {
+    # Read file until it encounters the string in the second argument then print what comes after
     while read -r line
     do
-        if [[ $line == "Duration:"* ]]; then
+        if [[ $line == "$2"* ]]; then
           echo $line | cut -d : -f2 -
         fi
     done < "$1"
@@ -46,6 +46,9 @@ print_exec_time () {
 
 py_exec_times=()
 cpp_exec_times=()
+
+py_exec_distances=()
+cpp_exec_distances=()
 
 # Run the programs n_execs number of time and store the outputs in the temporary folder
 for (( idx=1; idx<=$n_execs; idx++ ))
@@ -63,23 +66,37 @@ do
     eval "$full_py_cmd"
     eval "$full_cpp_cmd"
 
-    py_exec_times+=$(print_exec_time $py_output)
-    cpp_exec_times+=$(print_exec_time $cpp_output)
+    py_exec_times+=$(cut_info_from_file $py_output "Duration")
+    cpp_exec_times+=$(cut_info_from_file $cpp_output "Duration")
+
+    py_exec_distances+=$(cut_info_from_file $py_output "Distance")
+    cpp_exec_distances+=$(cut_info_from_file $cpp_output "Distance")
 done
 
 # Python oneliners for calculating mean and standard deviation
 py_calc_mean="\"import sys; print('%3.3f' % (sum([float(x) for x in sys.argv[1:]]) / len(sys.argv[1:])))\""
 py_calc_std="\"import sys,numpy; print('%3.3f' % numpy.array(sys.argv[1:],dtype=numpy.float64).std())\""
 
+# Calculate statistics about execution time
 py_mean_exec=$(eval "python -c $py_calc_mean ${py_exec_times[@]}")
 cpp_mean_exec=$(eval "python -c $py_calc_mean ${cpp_exec_times[@]}")
 
 py_std_exec=$(eval "python -c $py_calc_std ${py_exec_times[@]}")
 cpp_std_exec=$(eval "python -c $py_calc_std ${cpp_exec_times[@]}")
 
+# Calculate statistics about minimum distance
+py_mean_distance=$(eval "python -c $py_calc_mean ${py_exec_distances[@]}")
+cpp_mean_distance=$(eval "python -c $py_calc_mean ${cpp_exec_distances[@]}")
+
+py_std_distance=$(eval "python -c $py_calc_std ${py_exec_distances[@]}")
+cpp_std_distance=$(eval "python -c $py_calc_std ${cpp_exec_distances[@]}")
+
+
 echo -e "Comparison of TravelingSalesmanGeneticSolver execution speed of C++ and Python versions." | tee --append $output
 echo -e "Graph file used for comparison:\t$(realpath $graph)" | tee --append $output
 echo -e "Mean Python version execution time:\t$py_mean_exec ($py_std_exec)" | tee --append $output
 echo -e "Mean C++ version execution time:\t$cpp_mean_exec ($cpp_std_exec)" | tee --append $output
+echo -e "Mean Python version distance:\t$py_mean_distance ($py_std_distance)" | tee --append $output
+echo -e "Mean C++ version distance:\t$cpp_mean_distance ($cpp_std_distance)" | tee --append $output
 
 rm -rf $temp_dir
