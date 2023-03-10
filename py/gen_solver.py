@@ -23,6 +23,7 @@ class TravelingSalesmanGeneticSolver:
         mutation_frac: float = 0.3,
         max_generations: int = 10,
         seed: int = 0,
+        output: Path = None,
     ):
         self._graph = graph
         self._pop_size = pop_size
@@ -31,6 +32,7 @@ class TravelingSalesmanGeneticSolver:
         self._drop_frac = drop_frac
         self._mutation_frac = mutation_frac
         self._max_generations = max_generations
+        self._output = output
 
         self._population = None
         self._scores = None
@@ -211,13 +213,25 @@ class TravelingSalesmanGeneticSolver:
 
         end_time = time.time()
 
-        exec_time = round(end_time - start_time, 2)
+        exec_time = round(end_time - start_time, 5)
 
         logger.success(
             f"Algorithm completed in {exec_time} seconds, shortest distance found:\t{self._scores[0]}"
         )
 
         logger.info(f"Solution:\t{self._population[0,:]}")
+
+        # Write solution to a separate file
+        if self._output is not None:
+            if not self._output.parent.exists():
+                self._output.parent.mkdir(parents=True)
+
+            logger.info(f"Writing results to:\t{self._output.resolve()}")
+
+            with open(self._output, "w") as io:
+                io.write("Solution: [ %s ]\n" % " ".join(map(str, self._population[0,:].tolist())))
+                io.write("Duration: %5.5f\n" % exec_time)
+                io.write("Distance: %d\n" % self._scores[0])
 
         return {"solution": self._population[0, :].tolist(), "time": exec_time}
 
@@ -267,14 +281,14 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--no-stdout", help="Disable printing of status to stdout.", action="store_true"
+        "--no-print", help="Disable printing of status to stdout.", action="store_true"
     )
 
     parser.add_argument(
-        "--outfile",
+        "--output",
         type=Path,
         default=None,
-        help="Store the solution in a text format.",
+        help="Write output of algorithm to separate file.",
     )
 
     return parser.parse_args()
@@ -322,7 +336,7 @@ if __name__ == "__main__":
 
     graph = load_graph(args.graph)
 
-    if args.no_stdout:
+    if args.no_print:
         logger.remove(0)
 
     if not args.logfile.parent.exists():
@@ -339,16 +353,7 @@ if __name__ == "__main__":
         mutation_frac=args.mutation_frac,
         max_generations=args.generations,
         seed=args.seed,
+        output=args.output,
     )
 
     result = solver.run()
-
-    if args.outfile is not None:
-        if not args.outfile.parent.exists():
-            args.outfile.parent.mkdir(parents=True)
-
-        logger.info(f"Writing results to:\t{args.outfile.resolve()}")
-
-        with open(args.outfile, "w") as io:
-            io.write("solution: %s\n" % " ".join(map(str, result["solution"])))
-            io.write("time: %5.5f\n" % result["time"])
