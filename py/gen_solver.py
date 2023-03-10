@@ -276,7 +276,7 @@ def parse_args():
     parser.add_argument(
         "--logfile",
         help="Path to output log file",
-        default=Path("logs/{time}.log"),
+        default=Path("logs/{time}_py.log"),
         type=Path,
     )
 
