@@ -1,7 +1,10 @@
+
+
 #include<iostream>
 #include<fstream>
 #include<filesystem>
 #include<tuple>
+#include<iomanip>
 #include<vector>
 
 #include<boost/log/core.hpp>
@@ -18,6 +21,8 @@
 namespace po = boost::program_options;
 namespace logging = boost::log;
 namespace keywords = boost::log::keywords;
+namespace expr = boost::log::expressions;
+namespace src = boost::log::sources;
 
 #define DEFAULT_N_GENERATIONS (100)
 #define DEFAULT_DROP_FRACTION (0.2)
@@ -35,7 +40,9 @@ po::variables_map parse_args(int argc, char* argv[])
         ("drop-frac", po::value<double>()->default_value(DEFAULT_DROP_FRACTION), "Fraction of chromosomes to be dropped every generation.")
         ("mutation-frac", po::value<double>()->default_value(DEFAULT_MUTATION_FRACTION), "Fraction of chromosome to be mutated every generation.")
         ("seed", po::value<unsigned>()->default_value(42), "Seed to use for random number generation")
+        ("logfile", po::value<std::string>()->default_value("logs/%Y-%m-%d_%H-%M-%s_cpp.log"), "Path to log file.")
         ("no-print", po::bool_switch()->default_value(false), "Disable printing to console.")
+        ("log-progress", po::bool_switch()->default_value(false), "Log score and best solution every generation.")
         ("output", po::value<std::string>(), "Path to file where results will be stored. Optional.")
     ;
 
@@ -127,12 +134,21 @@ int main(int argc, char* argv[]){
     if (args.count("graph") == 0)
         return EXIT_FAILURE;
 
+    
     // Setup logging
+    boost::log::register_simple_formatter_factory< severity_level, char>("Severity");
     logging::add_common_attributes();
-    logging::add_file_log(keywords::file_name = "logs/%Y-%m-%d_%H-%M-%s_cpp.log", keywords::format = "[%TimeStamp%]: %Message%");
+    logging::add_file_log(keywords::file_name = args["logfile"].as<std::string>(), keywords::format = "[%TimeStamp%] [%Severity%]: %Message%");
 
-    if (!args["no-print"].as<bool>())
-        logging::add_console_log(std::cout, keywords::format = ">>> %Message%");
+    if (!args["no-print"].as<bool>()) {
+        auto console_sink = logging::add_console_log(std::cout, keywords::format = ">>> %Message%");
+        console_sink->set_filter(expr::attr<severity_level>("Severity") >= info);
+    }
+
+    src::severity_logger< severity_level > lg;
+        
+
+    BOOST_LOG_SEV(lg, info) << "Logging to logfile:\t" << std::filesystem::absolute(std::filesystem::path(args["logfile"].as<std::string>())).string();
 
     std::vector<std::vector<long>> *graph;
 
@@ -143,7 +159,7 @@ int main(int argc, char* argv[]){
     if (!(graph = read_graph_from_file(graph_path)))
         return EXIT_FAILURE;
 
-    BOOST_LOG_TRIVIAL(info) << "Graph loaded from file:\t" << graph_path.string();
+    BOOST_LOG_SEV(lg, info) << "Graph loaded from file:\t" << graph_path.string();
 
     // Create and load argument structure
     auto solver_args = TravelingSalesmanGeneticSolverArgs();
@@ -152,6 +168,7 @@ int main(int argc, char* argv[]){
     solver_args.mutation_frac = args["mutation-frac"].as<double>();
     solver_args.seed = args["seed"].as<unsigned>();
     solver_args.pop_size = args["pop-size"].as<unsigned long>();
+    solver_args.log_progress = args["log-progress"].as<bool>();
     
     // If output file arg is given send it to the solver otherwise send empty path
     if (args.count("output"))

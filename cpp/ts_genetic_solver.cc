@@ -2,7 +2,9 @@
 
 #include<boost/log/trivial.hpp>
 
+
 #include<cstdlib>
+#include<sstream>
 #include<fstream>
 #include<chrono>
 #include<iostream>
@@ -32,7 +34,9 @@ TravelingSalesmanGeneticSolver::TravelingSalesmanGeneticSolver(std::vector<std::
     this->chromosome_index_dist = std::uniform_int_distribution<long>(1, this->num_nodes - 1);
 
     this->output_file_path = args.output;
+    this->log_status = args.log_progress;
 
+    this->generation = 0;
 }
 
 void TravelingSalesmanGeneticSolver::print_graph() 
@@ -213,19 +217,38 @@ void TravelingSalesmanGeneticSolver::mutation()
 
 void TravelingSalesmanGeneticSolver::log_settings()
 {
-    BOOST_LOG_TRIVIAL(info) << "Settings:";
-    BOOST_LOG_TRIVIAL(info) << "Generations:\t" << this->max_generations;
-    BOOST_LOG_TRIVIAL(info) << "Population size:\t" << this->pop_size;
-    BOOST_LOG_TRIVIAL(info) << "Drop fraction:\t" << this->drop_frac;
-    BOOST_LOG_TRIVIAL(info) << "Mutation frac:\t" << this->mutation_frac;
-    BOOST_LOG_TRIVIAL(info) << "Seed:\t" << this->seed;
+    BOOST_LOG_SEV(logger, info) << "Settings:";
+    BOOST_LOG_SEV(logger, info) << "Generations:\t" << this->max_generations;
+    BOOST_LOG_SEV(logger, info) << "Population size:\t" << this->pop_size;
+    BOOST_LOG_SEV(logger, info) << "Drop fraction:\t" << this->drop_frac;
+    BOOST_LOG_SEV(logger, info) << "Mutation frac:\t" << this->mutation_frac;
+    BOOST_LOG_SEV(logger, info) << "Seed:\t" << this->seed;
 }
 
+void TravelingSalesmanGeneticSolver::log_algo_status()
+{
+    // Log Generation id, current best score and current best solution
+    
+    std::string log_msg = "AlgorithmStatus:\t{";
+
+    log_msg += "\"generation\":" + std::to_string(this->generation) + ",";
+    log_msg += "\"min_distance\":" + std::to_string(this->population[0].score) + ",";
+    log_msg += "\"best_chromosome\": [ ";
+
+    std::stringstream best_chr_str;
+    std::copy(this->population[0].data.begin(), this->population[0].data.end(), std::ostream_iterator<long>(best_chr_str, ", "));
+
+    log_msg += best_chr_str.str();
+
+    log_msg += "]}";
+
+    BOOST_LOG_SEV(logger, status) << log_msg;
+}
 
 void TravelingSalesmanGeneticSolver::run() 
 {
 
-    BOOST_LOG_TRIVIAL(info) << "Running TravelingSalesmanGeneticSolver on graph with " << this->num_nodes << " nodes.";
+    BOOST_LOG_SEV(logger, info) << "Running TravelingSalesmanGeneticSolver on graph with " << this->num_nodes << " nodes.";
 
     log_settings();
     
@@ -234,11 +257,12 @@ void TravelingSalesmanGeneticSolver::run()
 
     initialize();
 
-    for(unsigned generation = 0; generation < this->max_generations ; generation++){
+    for(generation = 1; generation < this->max_generations ; generation++){
 
         calculate_fitness();
 
-        BOOST_LOG_TRIVIAL(info) << "Generation " << (generation + 1) << ":\t{score:\t" << this->population[0].score << "}";
+        if (this->log_status)
+            log_algo_status();
 
         drop_least_fit();
 
@@ -253,7 +277,7 @@ void TravelingSalesmanGeneticSolver::run()
 
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count() / 1e6;
 
-    BOOST_LOG_TRIVIAL(info) << "Algorithm finished in " << duration << " seconds, shortest distance found:\t" << this->population[0].score;
+    BOOST_LOG_SEV(logger, success) << "Algorithm finished in " << duration << " seconds, shortest distance found:\t" << this->population[0].score;
 
     // If an output file path has been given write the solution, exection time and final score to this file.
     if (!this->output_file_path.empty()){
@@ -261,7 +285,7 @@ void TravelingSalesmanGeneticSolver::run()
         output.open(this->output_file_path);
 
         if (!output.is_open())
-          BOOST_LOG_TRIVIAL(error) << "Unable to open output file:\t" << this->output_file_path.string();
+          BOOST_LOG_SEV(logger, error) << "Unable to open output file:\t" << this->output_file_path.string();
         else{
             output << "Solution:\t[ ";
             for (auto s: this->population[0].data){

@@ -1,7 +1,9 @@
 #!/bin/env python3
 
 import numpy as np
+import json
 from typing import Optional
+from random import randint
 import time
 from numpy.typing import ArrayLike as NDArray
 from datetime import datetime
@@ -26,6 +28,7 @@ class TravelingSalesmanGeneticSolver:
         max_generations: int = 10,
         seed: int = 0,
         output: Path = None,
+        log_progress = False,
     ):
         self._graph = graph
         self._pop_size = pop_size
@@ -42,6 +45,9 @@ class TravelingSalesmanGeneticSolver:
 
         # Setup random number generator
         self._rng = np.random.default_rng(seed=seed)
+        self._seed = seed
+
+        self._log_progress = log_progress
 
     def _initialize(self):
 
@@ -173,27 +179,20 @@ class TravelingSalesmanGeneticSolver:
 
     def _log_settings(self):
 
-        logger.info(f"Input graph:\n{graph}")
-
         logger.info(f"Number of graph nodes:\t{self._num_nodes}")
         logger.info(f"Population size:\t{self._pop_size}")
         logger.info(f"Generations:\t{self._max_generations}")
         logger.info(f"Drop fraction:\t{self._drop_frac}")
         logger.info(f"Mutation fraction:\t{self._mutation_frac}")
+        logger.info(f"Seed:\t{self._seed}")
 
     def run(self):
-
-        logger.info("Starting TravelingSalesmanGeneticSolver!")
 
         self._log_settings()
 
         start_time = time.time()
 
-        logger.info("Initializing population...")
-
         self._initialize()
-
-        logger.info("Running algorithm!")
 
         while self._generation < self._max_generations:
             self._generation += 1
@@ -201,9 +200,11 @@ class TravelingSalesmanGeneticSolver:
             # Calculate fitness of current population
             self._calculate_fitness()
 
-            logger.info(
-                f"Generation {self._generation}, shortest distance: {self._scores[0]}"
-            )
+            if self._log_progress:
+                status = {"generation":self._generation, "score":  self._scores[0], "best_chromosome": self._population[0,:].tolist()}
+                logger.log("STATUS",
+                        f"AlgorithmStatus: {json.dumps(status)}"
+                )
 
             self._drop_least_fit()
 
@@ -221,7 +222,7 @@ class TravelingSalesmanGeneticSolver:
             f"Algorithm completed in {exec_time} seconds, shortest distance found:\t{self._scores[0]}"
         )
 
-        logger.info(f"Solution:\t{self._population[0,:]}")
+        logger.log("STATUS",f"Solution:\t{self._population[0,:]}")
 
         # Write solution to a separate file
         if self._output is not None:
@@ -274,11 +275,12 @@ def parse_args():
         type=int,
     )
 
-    # current_time_str = datetime.now().strftime("%Y-%M-%d_%H-%m-%S")
+    N = randint(10000, 99999)
+    log_file_unformated = f"logs/%Y-%M-%d_%H-%m-%S.{N}_py.log"
     parser.add_argument(
         "--logfile",
         help="Path to output log file",
-        default=Path("logs/{time}_py.log"),
+        default=Path(log_file_unformated).resolve(),
         type=Path,
     )
 
@@ -292,6 +294,12 @@ def parse_args():
         default=None,
         help="Write output of algorithm to separate file.",
     )
+
+    parser.add_argument(
+            "--log-progress",
+            action="store_true",
+            help="Log the algorithm progress in the log file current score and current best solution. "
+            )
 
     return parser.parse_args()
 
@@ -338,14 +346,21 @@ if __name__ == "__main__":
 
     graph = load_graph(args.graph)
 
+    logger.level("STATUS", no=15, color="<blue>", icon="")
+    
+    format_str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSSS}</green> | <level>{level:<8}</level> | <level>{message}</level>"
+    logger.remove(0)
+    logger.add(sys.stdout, level="INFO", format=format_str)
+
     if args.no_print:
         logger.remove(0)
 
     if not args.logfile.parent.exists():
         args.logfile.parent.mkdir()
 
-    logger.add(args.logfile)
+    logger.add(args.logfile, level="STATUS", format=format_str)
 
+    logger.info(f"Logging to logfile:\t{datetime.now().strftime(str(args.logfile))}")
     logger.info(f"Graph file loaded:\t{args.graph.resolve()}")
 
     solver = TravelingSalesmanGeneticSolver(
@@ -356,6 +371,7 @@ if __name__ == "__main__":
         max_generations=args.generations,
         seed=args.seed,
         output=args.output,
+        log_progress=args.log_progress
     )
 
     result = solver.run()
