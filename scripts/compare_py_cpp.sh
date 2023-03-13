@@ -1,6 +1,6 @@
 #!/bin/bash
 
-py_cmd="python py/gen_solver.py"
+py_cmd="py/gen_solver.py"
 cpp_cmd="./gen_solver"
 
 generations=1000
@@ -18,11 +18,16 @@ if (( $# != 2 )); then
     exit 1
 fi
 
-# Check if graph file exists
-if [[ ! -f "$graph" ]]; then
-    echo -e "Graph file not found:\t$(realpath $graph)"
-    exit 1
-fi
+check_if_exist () {
+    if [[ ! -f "$1" ]]; then
+        echo -e "$2:\t$(realpath $1)"
+        exit 1
+    fi
+}
+
+check_if_exist $graph "Graph file not found"
+check_if_exist $py_cmd "Python version not found"
+check_if_exist $cpp_cmd "C++ version not found"
 
 args="--generations $generations --pop-size $pop_size --drop-frac $drop_frac --mutation-frac $mutation_frac --no-print"
 
@@ -73,7 +78,7 @@ do
     cpp_exec_distances+=$(cut_info_from_file $cpp_output "Distance")
 done
 
-# Python oneliners for calculating mean and standard deviation
+# Python oneliners for calculating mean and standard deviation with floating point precision
 py_calc_mean="\"import sys; print('%3.3f' % (sum([float(x) for x in sys.argv[1:]]) / len(sys.argv[1:])))\""
 py_calc_std="\"import sys,numpy; print('%3.3f' % numpy.array(sys.argv[1:],dtype=numpy.float64).std())\""
 
