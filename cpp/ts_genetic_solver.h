@@ -2,6 +2,7 @@
 #include<vector>
 #include<random>
 #include<string>
+#include<iostream>
 #include<filesystem>
 
 
@@ -108,5 +109,6 @@ class TravelingSalesmanGeneticSolver {
       void print_population();
 
 };
+
 
 #endif

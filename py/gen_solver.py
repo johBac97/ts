@@ -2,6 +2,7 @@
 
 import numpy as np
 import json
+from tqdm import tqdm
 from typing import Optional
 from random import randint
 import time
@@ -194,6 +195,7 @@ class TravelingSalesmanGeneticSolver:
 
         self._initialize()
 
+        pbar = tqdm(total=self._max_generations)
         while self._generation < self._max_generations:
             self._generation += 1
 
@@ -211,6 +213,10 @@ class TravelingSalesmanGeneticSolver:
             self._crossover()
 
             self._mutation()
+
+            pbar.update(1)
+
+        pbar.close()
 
         self._calculate_fitness()
 
@@ -276,7 +282,7 @@ def parse_args():
     )
 
     N = randint(10000, 99999)
-    log_file_unformated = f"logs/%Y-%M-%d_%H-%m-%S.{N}_py.log"
+    log_file_unformated = f"logs/%Y-%m-%d_%H-%M-%S.{N}_py.log"
     parser.add_argument(
         "--logfile",
         help="Path to output log file",
@@ -358,9 +364,10 @@ if __name__ == "__main__":
     if not args.logfile.parent.exists():
         args.logfile.parent.mkdir()
 
-    logger.add(args.logfile, level="STATUS", format=format_str)
+    logfile = datetime.now().strftime(str(args.logfile))
+    logger.add(logfile, level="STATUS", format=format_str)
 
-    logger.info(f"Logging to logfile:\t{datetime.now().strftime(str(args.logfile))}")
+    logger.info(f"Logging to logfile:\t{logfile}")
     logger.info(f"Graph file loaded:\t{args.graph.resolve()}")
 
     solver = TravelingSalesmanGeneticSolver(

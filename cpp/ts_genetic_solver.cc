@@ -2,7 +2,6 @@
 
 #include<boost/log/trivial.hpp>
 
-
 #include<cstdlib>
 #include<sstream>
 #include<fstream>
@@ -14,6 +13,29 @@
 #include<random>
 
 #include "ts_genetic_solver.h"
+
+void print_progress_bar(double progress, int length = 120) {
+
+    int pos;
+    std::cout << "[";
+    if (progress <= 1.0)
+        pos = length * progress;
+    else
+        pos = length; 
+
+    for(int i = 0;  i < length; ++i) {
+        if (i < pos) std::cout << "=";
+        else if (i == pos) std::cout << ">";
+        else std::cout << " ";
+    }
+    std::cout << "] ";
+    if (progress <= 1.0)
+        std::cout << int(progress * 100.0) << " %\r";
+    else
+        std::cout << "Done!" << std::endl;
+
+    std::cout.flush();
+}
 
 TravelingSalesmanGeneticSolver::TravelingSalesmanGeneticSolver(std::vector<std::vector<long>> graph, TravelingSalesmanGeneticSolverArgs args)
 {
@@ -257,7 +279,12 @@ void TravelingSalesmanGeneticSolver::run()
 
     initialize();
 
+    BOOST_LOG_SEV(logger, info) << "Running...";
+    
     for(generation = 1; generation < this->max_generations ; generation++){
+
+        if ((generation % (this->max_generations / 100)) == 0)
+            print_progress_bar(static_cast<double>(generation) / static_cast<double>(this->max_generations));
 
         calculate_fitness();
 
@@ -270,6 +297,9 @@ void TravelingSalesmanGeneticSolver::run()
 
         mutation();
     }
+
+    // Progress larger than one clears bar
+    print_progress_bar(2.0);
 
     calculate_fitness();
 
