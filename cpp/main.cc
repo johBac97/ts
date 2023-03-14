@@ -68,11 +68,11 @@ po::variables_map parse_args(int argc, char* argv[])
     return vm;
 }
 
-std::vector<std::vector<long>>* read_graph_from_file(std::filesystem::path path)
+std::vector<std::vector<double>>* read_graph_from_file(std::filesystem::path path)
 {
-    std::vector<std::vector<long>>* graph;
+    std::vector<std::vector<double>>* graph;
     unsigned long num_nodes; 
-    unsigned short ix, iy;
+    unsigned long ix, iy;
     std::string buffer;
     std::ifstream in;    
 
@@ -96,7 +96,7 @@ std::vector<std::vector<long>>* read_graph_from_file(std::filesystem::path path)
     } 
 
     // Initialize graph
-    graph = new std::vector<std::vector<long>>;
+    graph = new std::vector<std::vector<double>>;
 
     std::getline(in, buffer); 
     num_nodes = std::stoi(buffer);
@@ -105,11 +105,11 @@ std::vector<std::vector<long>>* read_graph_from_file(std::filesystem::path path)
     ix = 0;
     iy = 0;
 
-    std::vector<long> temp_vec;
-    while (!in.eof()) {
+    std::vector<double> temp_vec;
+    while (iy < num_nodes) {
 
         in >> buffer;
-        temp_vec.push_back(std::stoi(buffer));
+        temp_vec.push_back(std::stod(buffer));
         ix++;
 
         if (ix == num_nodes) {
@@ -150,7 +150,7 @@ int main(int argc, char* argv[]){
 
     BOOST_LOG_SEV(lg, info) << "Logging to logfile:\t" << std::filesystem::absolute(std::filesystem::path(args["logfile"].as<std::string>())).string();
 
-    std::vector<std::vector<long>> *graph;
+    std::vector<std::vector<double>> *graph;
 
     // Use resolved path of the supplied graph file
     auto graph_path = std::filesystem::absolute(std::filesystem::path(args["graph"].as<std::string>()));

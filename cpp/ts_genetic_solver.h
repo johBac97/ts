@@ -49,7 +49,7 @@ operator<< (
 // Define a struct containing a chromosome and its score.
 struct Chromosome {
     std::vector<long> data;
-    long score;
+    double score;
 };
 
 struct TravelingSalesmanGeneticSolverArgs{
@@ -66,7 +66,7 @@ struct TravelingSalesmanGeneticSolverArgs{
 
 class TravelingSalesmanGeneticSolver {
   private:
-      std::vector<std::vector<long>> graph;
+      std::vector<std::vector<double>> graph;
       unsigned max_generations;
       unsigned generation;
       unsigned long num_nodes;
@@ -103,7 +103,7 @@ class TravelingSalesmanGeneticSolver {
       void log_algo_status();
 
   public:
-      TravelingSalesmanGeneticSolver(std::vector<std::vector<long>> graph, TravelingSalesmanGeneticSolverArgs = TravelingSalesmanGeneticSolverArgs());
+      TravelingSalesmanGeneticSolver(std::vector<std::vector<double>> graph, TravelingSalesmanGeneticSolverArgs = TravelingSalesmanGeneticSolverArgs());
       void run();
       void print_graph();
       void print_population();

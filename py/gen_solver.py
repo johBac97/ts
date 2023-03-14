@@ -29,7 +29,7 @@ class TravelingSalesmanGeneticSolver:
         max_generations: int = 10,
         seed: int = 0,
         output: Path = None,
-        log_progress = False,
+        log_progress=False,
     ):
         self._graph = graph
         self._pop_size = pop_size
@@ -203,10 +203,12 @@ class TravelingSalesmanGeneticSolver:
             self._calculate_fitness()
 
             if self._log_progress:
-                status = {"generation":self._generation, "score":  self._scores[0], "best_chromosome": self._population[0,:].tolist()}
-                logger.log("STATUS",
-                        f"AlgorithmStatus: {json.dumps(status)}"
-                )
+                status = {
+                    "generation": self._generation,
+                    "score": self._scores[0],
+                    "best_chromosome": self._population[0, :].tolist(),
+                }
+                logger.log("STATUS", f"AlgorithmStatus: {json.dumps(status)}")
 
             self._drop_least_fit()
 
@@ -228,7 +230,7 @@ class TravelingSalesmanGeneticSolver:
             f"Algorithm completed in {exec_time} seconds, shortest distance found:\t{self._scores[0]}"
         )
 
-        logger.log("STATUS",f"Solution:\t{self._population[0,:]}")
+        logger.log("STATUS", f"Solution:\t{self._population[0,:]}")
 
         # Write solution to a separate file
         if self._output is not None:
@@ -238,7 +240,10 @@ class TravelingSalesmanGeneticSolver:
             logger.info(f"Writing results to:\t{self._output.resolve()}")
 
             with open(self._output, "w") as io:
-                io.write("Solution: [ %s ]\n" % " ".join(map(str, self._population[0,:].tolist())))
+                io.write(
+                    "Solution: [ %s ]\n"
+                    % " ".join(map(str, self._population[0, :].tolist()))
+                )
                 io.write("Duration: %5.5f\n" % exec_time)
                 io.write("Distance: %d\n" % self._scores[0])
 
@@ -302,10 +307,10 @@ def parse_args():
     )
 
     parser.add_argument(
-            "--log-progress",
-            action="store_true",
-            help="Log the algorithm progress in the log file current score and current best solution. "
-            )
+        "--log-progress",
+        action="store_true",
+        help="Log the algorithm progress in the log file current score and current best solution. ",
+    )
 
     return parser.parse_args()
 
@@ -318,8 +323,9 @@ def load_text_graph_format(path: Path):
 
         graph = np.zeros((0, n_nodes), dtype=np.int64)
 
-        while values := io.readline().strip().split():
-            array = np.array(values, dtype=np.int64)
+        for line_id in range(0, n_nodes):
+            values = io.readline().strip().split()
+            array = np.array(values, dtype=np.float64)
             graph = np.r_[graph, array[np.newaxis, :]]
 
         assert graph.shape[0] == graph.shape[1], "Non-square graph read from text file."
@@ -353,7 +359,7 @@ if __name__ == "__main__":
     graph = load_graph(args.graph)
 
     logger.level("STATUS", no=15, color="<blue>", icon="")
-    
+
     format_str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSSS}</green> | <level>{level:<8}</level> | <level>{message}</level>"
     logger.remove(0)
     logger.add(sys.stdout, level="INFO", format=format_str)
@@ -378,7 +384,7 @@ if __name__ == "__main__":
         max_generations=args.generations,
         seed=args.seed,
         output=args.output,
-        log_progress=args.log_progress
+        log_progress=args.log_progress,
     )
 
     result = solver.run()

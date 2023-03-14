@@ -37,7 +37,7 @@ void print_progress_bar(double progress, int length = 120) {
     std::cout.flush();
 }
 
-TravelingSalesmanGeneticSolver::TravelingSalesmanGeneticSolver(std::vector<std::vector<long>> graph, TravelingSalesmanGeneticSolverArgs args)
+TravelingSalesmanGeneticSolver::TravelingSalesmanGeneticSolver(std::vector<std::vector<double>> graph, TravelingSalesmanGeneticSolverArgs args)
 {
     this->num_nodes = graph.size();
     this->graph = graph;
@@ -86,7 +86,7 @@ void TravelingSalesmanGeneticSolver::calculate_fitness()
 
     // Calculate fitness of current population
     unsigned current_pos, next_pos;
-    long score;
+    double score;
     std::vector<long> chr;
 
     for (unsigned chr_idx = 0; chr_idx < this->pop_size; chr_idx++){
@@ -273,7 +273,7 @@ void TravelingSalesmanGeneticSolver::run()
     BOOST_LOG_SEV(logger, info) << "Running TravelingSalesmanGeneticSolver on graph with " << this->num_nodes << " nodes.";
 
     log_settings();
-    
+
     // Measure algorithm execution time
     auto start_time = std::chrono::high_resolution_clock::now();
 
