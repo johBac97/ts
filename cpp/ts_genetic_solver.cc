@@ -262,6 +262,10 @@ void TravelingSalesmanGeneticSolver::log_algo_status()
 
     log_msg += best_chr_str.str();
 
+    // Remove last occurrence of ", "
+    log_msg.pop_back();
+    log_msg.pop_back();
+
     log_msg += "]}";
 
     BOOST_LOG_SEV(logger, status) << log_msg;
