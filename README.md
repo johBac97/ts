@@ -9,7 +9,7 @@ some helpful scripts to generate input graph files and for speed comparison.
 ### Background
 
 This repo was created as an educational oppurtunity to explore genetic
-algorithms as well as allow me(johBac97) to sharpen my C++ skills. An emphasis
+algorithms as well as to gain more C++ experience. An emphasis
 has been placed on making the two implementations of the algorithm as
 equivalent as possible to allow for an accurate speed comparison. 
 
@@ -63,4 +63,17 @@ Optional arguments used by both implementations:
   - `--mutation-frac R`: Set the fraction of individuals that should be mutated every generation.
   - `--no-print`: Disable printing to standard output.
   - `--output PATH`: Write the results of the algorithm to a text file.
+  - `--logfile PATH`: Write logs to file
+  - `--log-progress`: Also add current solution for each time step to the logs. Used to create animations.
+
+
+### Animations
+
+The `scripts/create_animation.py` script can be used to create an animation of the genetic algorithm. It plots the current solution for each time step outputed by solvers.
+To create an animation the solvers need to be run with the `--logfile` and `--log-progress` arguments. Then use the following command to create an animation:
+```
+python scripts/create_animation.py <PATH-TO-GRAPH> <PATH-TO-LOG> --output <PATH-TO-OUTPUT>
+```
+
+This will create and show an animation which will then be saved to `<PATH-TO-OUTPUT>`. See the `-h` switch for more options.
 
