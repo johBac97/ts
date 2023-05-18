@@ -230,7 +230,7 @@ class TravelingSalesmanGeneticSolver:
             f"Algorithm completed in {exec_time} seconds, shortest distance found:\t{self._scores[0]}"
         )
 
-        logger.log("STATUS", f"Solution:\t{self._population[0,:]}")
+        # logger.info(f"Solution:\t{self._population[0,:]}")
 
         # Write solution to a separate file
         if self._output is not None:
